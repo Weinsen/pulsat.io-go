@@ -16,6 +16,7 @@ func main() {
 	p.SetData("hostname", "test")
 	p.SetCallback("connection", Print)
 	p.SetCallback("heartbeat", Print)
+	p.SetCallback("error", Print)
 	p.Start()
 
 

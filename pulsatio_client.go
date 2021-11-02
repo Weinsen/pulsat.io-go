@@ -34,6 +34,13 @@ func New(id string, url string) (Pulsatio) {
 	return p
 }
 
+func (p *Pulsatio) errorHandler(e error) error {
+	if cb, ok := p.on["error"]; ok {
+	    cb(e.Error())
+	}
+	return e
+}
+
 func (p *Pulsatio) SetCallback(e string, f func(string)) (error) {
 	p.on[e] = f
 	return nil
@@ -58,13 +65,13 @@ func (p *Pulsatio) ClearData(k string) {
 
 
 func (p *Pulsatio) Register() (string, error) {
-	json, _ := sjson.Set("", "id", "1")
+	json, _ := sjson.Set("", "id", p.id)
 	for k, v := range p.data {
 		json, _ = sjson.Set(json, k, v)
 	}
 	resp, err := p.doRequest("POST", json)
 	if err != nil {
-		return resp, err
+		return resp, p.errorHandler(err)
 	}
 	if cb, ok := p.on["connection"]; ok {
 	    cb(resp)
@@ -79,7 +86,7 @@ func (p *Pulsatio) SendHeartBeat() (string, error) {
 	json, _ := sjson.Set("", "id", "1")
 	resp, err := p.doRequest("PUT", json)
 	if err != nil {
-		return resp, err
+		return resp, p.errorHandler(err)
 	}
 	if resp != "" {
 		if msg_id := gjson.Get(resp, "_message_id"); msg_id.Exists() {
@@ -127,13 +134,13 @@ func (p *Pulsatio) doRequest(method string, data string) (string, error) {
 
 	req, err := http.NewRequest(method, url, bytes.NewBuffer([]byte(data)))
 	if err != nil {
-		return "", err
+		return "", p.errorHandler(err)
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", p.errorHandler(err)
 	}
 
 	if resp.StatusCode >= 300 {
@@ -142,7 +149,7 @@ func (p *Pulsatio) doRequest(method string, data string) (string, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", p.errorHandler(err)
 	}
 	defer resp.Body.Close()
 

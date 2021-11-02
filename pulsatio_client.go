@@ -13,7 +13,7 @@ type Pulsatio struct {
 	url string
 	interval int
 	id string
-	Data map[string]string
+	data map[string]string
 	on map[string]func(string)
 	_interval int
 	_message_id string
@@ -25,7 +25,7 @@ func New(id string, url string) (Pulsatio) {
 	p := Pulsatio{}
 	p.url = url
 	p.id = id
-	p.Data = map[string]string{}
+	p.data = map[string]string{}
 	p.on = map[string]func(string){}
 	p._message_id = ""
 	p._interval = 1 * 1000
@@ -39,8 +39,29 @@ func (p *Pulsatio) SetCallback(e string, f func(string)) (error) {
 	return nil
 }
 
+func (p *Pulsatio) SetData(k string, v string) {
+	p.data[k] = v
+}
+
+func (p *Pulsatio) GetData(k string) string {
+	if v, ok := p.data[k]; ok {
+		return v
+	}
+	return ""
+}
+
+func (p *Pulsatio) ClearData(k string) {
+	if _, ok := p.data[k]; ok {
+		delete(p.data, k)
+	}
+}
+
+
 func (p *Pulsatio) Register() (string, error) {
 	json, _ := sjson.Set("", "id", "1")
+	for k, v := range p.data {
+		json, _ = sjson.Set(json, k, v)
+	}
 	resp, err := p.doRequest("POST", json)
 	if err != nil {
 		return resp, err

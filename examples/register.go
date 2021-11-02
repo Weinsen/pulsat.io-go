@@ -13,6 +13,7 @@ func Print(data string) {
 func main() {
 
 	p := pulsatio.New("1", "http://localhost:3000")
+	p.SetData("hostname", "test")
 	p.SetCallback("connection", Print)
 	p.SetCallback("heartbeat", Print)
 	p.Start()

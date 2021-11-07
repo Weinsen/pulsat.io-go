@@ -96,6 +96,7 @@ func (p *Pulsatio) Register() (string, error) {
 	}
 	if resp != "" {
 		p._connected = true
+		p._update = false
 	}
 	return resp, nil
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/tidwall/sjson"
 	"net/http"
 	"io"
+	"fmt"
 	"bytes"
 	"time"
 )
@@ -13,25 +14,39 @@ type Pulsatio struct {
 	url string
 	interval int
 	id string
-	data map[string]string
+	data map[string]interface{}
 	on map[string]func(string)
 	_interval int
 	_message_id string
 	_active bool
 	_connected bool
+	_update bool
 }
 
 func New(id string, url string) (Pulsatio) {
 	p := Pulsatio{}
 	p.url = url
 	p.id = id
-	p.data = map[string]string{}
-	p.on = map[string]func(string){}
+	p._interval = 1 * 15000
 	p._message_id = ""
-	p._interval = 1 * 1000
 	p._active = true
 	p._connected = false
+	p.data = map[string]interface{}{}
+	p.on = map[string]func(string){}
+	p.data["interval"] = p._interval
 	return p
+}
+
+func (p *Pulsatio) update() {
+	p._update = true
+}
+
+func (p *Pulsatio) SetInterval(interval int) {
+	if p._interval != interval {
+		p._interval = interval
+		p.data["interval"] = interval
+		p.update()
+	}
 }
 
 func (p *Pulsatio) errorHandler(e error) error {
@@ -47,12 +62,15 @@ func (p *Pulsatio) SetCallback(e string, f func(string)) (error) {
 }
 
 func (p *Pulsatio) SetData(k string, v string) {
-	p.data[k] = v
+	if value, ok := p.data[k]; ok && value != v {
+		p.data[k] = v
+		p.update()
+	}
 }
 
 func (p *Pulsatio) GetData(k string) string {
 	if v, ok := p.data[k]; ok {
-		return v
+		return fmt.Sprintf("%v", v)
 	}
 	return ""
 }
@@ -107,7 +125,7 @@ func (p *Pulsatio) SendHeartBeat() (string, error) {
 func (p *Pulsatio) Start() {
 	go func() {
 		for p._active {
-			if p._connected {
+			if p._connected && !p._update {
 				p.SendHeartBeat()
 			} else {
 				p.Register()

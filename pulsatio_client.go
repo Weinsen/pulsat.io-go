@@ -31,6 +31,7 @@ func New(id string, url string) (Pulsatio) {
 	p._message_id = ""
 	p._active = true
 	p._connected = false
+	p._update = false
 	p.data = map[string]interface{}{}
 	p.on = map[string]func(string){}
 	p.data["interval"] = p._interval
@@ -81,7 +82,6 @@ func (p *Pulsatio) ClearData(k string) {
 	}
 }
 
-
 func (p *Pulsatio) Register() (string, error) {
 	json, _ := sjson.Set("", "id", p.id)
 	for k, v := range p.data {
@@ -96,8 +96,8 @@ func (p *Pulsatio) Register() (string, error) {
 	}
 	if resp != "" {
 		p._connected = true
-		p._update = false
 	}
+	p._update = false
 	return resp, nil
 }
 

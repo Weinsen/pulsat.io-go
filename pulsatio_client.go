@@ -1,8 +1,7 @@
 package pulsatio_client
 
 import (
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
+	"encoding/json"
 	"net/http"
 	"io"
 	"fmt"
@@ -15,7 +14,7 @@ type Pulsatio struct {
 	interval int
 	id string
 	data map[string]interface{}
-	on map[string]func(string)
+	on map[string]func([]byte)
 	_interval int
 	_message_id string
 	_active bool
@@ -33,7 +32,7 @@ func New(id string, url string) (Pulsatio) {
 	p._connected = false
 	p._update = false
 	p.data = map[string]interface{}{}
-	p.on = map[string]func(string){}
+	p.on = map[string]func([]byte){}
 	p.data["interval"] = p._interval
 	return p
 }
@@ -52,12 +51,12 @@ func (p *Pulsatio) SetInterval(interval int) {
 
 func (p *Pulsatio) errorHandler(e error) error {
 	if cb, ok := p.on["error"]; ok {
-	    cb(e.Error())
+	    cb([]byte(e.Error()))
 	}
 	return e
 }
 
-func (p *Pulsatio) SetCallback(e string, f func(string)) (error) {
+func (p *Pulsatio) SetCallback(e string, f func([]byte)) (error) {
 	p.on[e] = f
 	return nil
 }
@@ -82,44 +81,67 @@ func (p *Pulsatio) ClearData(k string) {
 	}
 }
 
-func (p *Pulsatio) Register() (string, error) {
-	json, _ := sjson.Set("", "id", p.id)
-	for k, v := range p.data {
-		json, _ = sjson.Set(json, k, v)
-	}
-	resp, err := p.doRequest("POST", json)
+func (p *Pulsatio) Register() ([]byte, error) {
+	
+	p.data["id"] = p.id
+	req, err := json.Marshal(&p.data)
 	if err != nil {
-		return resp, p.errorHandler(err)
+		return []byte{}, p.errorHandler(err)
+	}
+
+	body, err := p.doRequest("POST", req)
+	if err != nil {
+		return body, p.errorHandler(err)
 	}
 	if cb, ok := p.on["connection"]; ok {
-	    cb(resp)
+	    cb(body)
 	}
-	if resp != "" {
+	if len(body) > 0 {
 		p._connected = true
 	}
 	p._update = false
-	return resp, nil
+	return body, nil
 }
 
-func (p *Pulsatio) SendHeartBeat() (string, error) {
-	json, _ := sjson.Set("", "id", "1")
-	resp, err := p.doRequest("PUT", json)
-	if err != nil {
-		return resp, p.errorHandler(err)
+func (p *Pulsatio) SendHeartBeat() ([]byte, error) {
+
+	req_data := struct {
+		id string `json: "id"`
+	}{
+		id: p.id,
 	}
-	if resp != "" {
-		if msg_id := gjson.Get(resp, "_message_id"); msg_id.Exists() {
-			message_id := msg_id.String()
-			if message_id != p._message_id {
-				p._message_id = message_id
-				if cb, ok := p.on["heartbeat"]; ok {
-				    cb(resp)
-				}
-				return resp, nil
+
+	req, err := json.Marshal(&req_data)
+	if err != nil {
+		return []byte{}, p.errorHandler(err)
+	}
+
+	body, err := p.doRequest("PUT", req)
+	if err != nil {
+		return body, p.errorHandler(err)
+	}
+	if len(body) > 0 {
+
+		type Message struct {
+			id string `json: "_message_id"`
+		}
+
+		msg := Message{}
+
+		err := json.Unmarshal(body, &msg)
+		if err != nil {
+			return []byte{}, p.errorHandler(err)
+		}
+
+		if msg.id != p._message_id {
+			p._message_id = msg.id
+			if cb, ok := p.on["heartbeat"]; ok {
+			    cb(body)
 			}
+			return body, nil
 		}
 	}
-	return resp, nil
+	return body, nil
 
 }
 
@@ -141,7 +163,7 @@ func (p *Pulsatio) Stop() {
 	p._connected = false
 }
 
-func (p *Pulsatio) doRequest(method string, data string) (string, error) {
+func (p *Pulsatio) doRequest(method string, data []byte) ([]byte, error) {
 	client := &http.Client{
 		Timeout: time.Duration(p._interval) * time.Millisecond,
 	}
@@ -151,15 +173,15 @@ func (p *Pulsatio) doRequest(method string, data string) (string, error) {
 		url += "/" + p.id
 	}
 
-	req, err := http.NewRequest(method, url, bytes.NewBuffer([]byte(data)))
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(data))
 	if err != nil {
-		return "", p.errorHandler(err)
+		return []byte{}, p.errorHandler(err)
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", p.errorHandler(err)
+		return []byte{}, p.errorHandler(err)
 	}
 
 	if resp.StatusCode >= 300 {
@@ -168,9 +190,9 @@ func (p *Pulsatio) doRequest(method string, data string) (string, error) {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", p.errorHandler(err)
+		return []byte{}, p.errorHandler(err)
 	}
 	defer resp.Body.Close()
 
-	return string(body), nil
+	return body, nil
 }

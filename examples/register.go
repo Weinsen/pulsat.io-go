@@ -6,7 +6,7 @@ import (
 	pulsatio "github.com/Weinsen/pulsat.io-go"
 )
 
-func Print(data string) {
+func Print(data []byte) {
 	fmt.Printf("CALLBACK: %s\n", data)
 }
 

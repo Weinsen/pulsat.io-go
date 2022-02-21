@@ -105,10 +105,12 @@ func (p *Pulsatio) Register() ([]byte, error) {
 
 func (p *Pulsatio) SendHeartBeat() ([]byte, error) {
 
-	req_data := struct {
-		id string `json: "id"`
-	}{
-		id: p.id,
+	type Request struct {
+		Id string `json: "id"`
+	}
+
+	req_data := Request{
+		Id: p.id,
 	}
 
 	req, err := json.Marshal(&req_data)
@@ -123,7 +125,7 @@ func (p *Pulsatio) SendHeartBeat() ([]byte, error) {
 	if len(body) > 0 {
 
 		type Message struct {
-			id string `json: "_message_id"`
+			Id string `json: "_message_id"`
 		}
 
 		msg := Message{}
@@ -133,8 +135,8 @@ func (p *Pulsatio) SendHeartBeat() ([]byte, error) {
 			return []byte{}, p.errorHandler(err)
 		}
 
-		if msg.id != p._message_id {
-			p._message_id = msg.id
+		if msg.Id != p._message_id {
+			p._message_id = msg.Id
 			if cb, ok := p.on["heartbeat"]; ok {
 			    cb(body)
 			}

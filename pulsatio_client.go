@@ -34,6 +34,7 @@ func New(id string, url string) (Pulsatio) {
 	p.data = map[string]interface{}{}
 	p.on = map[string]func([]byte){}
 	p.data["interval"] = p._interval
+	p.data["id"] = id
 	return p
 }
 
@@ -62,7 +63,7 @@ func (p *Pulsatio) SetCallback(e string, f func([]byte)) (error) {
 }
 
 func (p *Pulsatio) SetData(k string, v string) {
-	if value, ok := p.data[k]; ok && value != v {
+	if value, ok := p.data[k]; ok && value != v || !ok {
 		p.data[k] = v
 		p.update()
 	}

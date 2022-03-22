@@ -1,31 +1,33 @@
 package pulsatio_client
 
 import (
-	"encoding/json"
-	"net/http"
-	"io"
-	"fmt"
 	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 	"time"
 )
 
 type Pulsatio struct {
-	url string
-	interval int
-	id string
-	data map[string]interface{}
-	on map[string]func([]byte)
-	_interval int
+	url         string
+	interval    int
+	ip          string
+	id          string
+	data        map[string]interface{}
+	on          map[string]func([]byte)
+	_interval   int
 	_message_id string
-	_active bool
-	_connected bool
-	_update bool
+	_active     bool
+	_connected  bool
+	_update     bool
 }
 
-func New(id string, url string) (Pulsatio) {
+func New(id string, url string, ip string) Pulsatio {
 	p := Pulsatio{}
 	p.url = url
 	p.id = id
+	p.ip = ip
 	p._interval = 1 * 15000
 	p._message_id = ""
 	p._active = true
@@ -51,12 +53,12 @@ func (p *Pulsatio) SetInterval(interval int) {
 
 func (p *Pulsatio) errorHandler(e error) error {
 	if cb, ok := p.on["error"]; ok {
-	    cb([]byte(e.Error()))
+		cb([]byte(e.Error()))
 	}
 	return e
 }
 
-func (p *Pulsatio) SetCallback(e string, f func([]byte)) (error) {
+func (p *Pulsatio) SetCallback(e string, f func([]byte)) error {
 	p.on[e] = f
 	return nil
 }
@@ -82,7 +84,7 @@ func (p *Pulsatio) ClearData(k string) {
 }
 
 func (p *Pulsatio) Register() ([]byte, error) {
-	
+
 	p.data["id"] = p.id
 	req, err := json.Marshal(&p.data)
 	if err != nil {
@@ -94,7 +96,7 @@ func (p *Pulsatio) Register() ([]byte, error) {
 		return body, p.errorHandler(err)
 	}
 	if cb, ok := p.on["connection"]; ok {
-	    cb(body)
+		cb(body)
 	}
 	if len(body) > 0 {
 		p._connected = true
@@ -138,7 +140,7 @@ func (p *Pulsatio) SendHeartBeat() ([]byte, error) {
 		if msg.Id != p._message_id {
 			p._message_id = msg.Id
 			if cb, ok := p.on["heartbeat"]; ok {
-			    cb(body)
+				cb(body)
 			}
 			return body, nil
 		}

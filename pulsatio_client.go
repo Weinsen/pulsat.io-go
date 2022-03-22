@@ -16,16 +16,20 @@ type Pulsatio struct {
 	data map[string]interface{}
 	on map[string]func([]byte)
 	_interval int
+	ip          string
+	hostname    string
 	_message_id string
 	_active bool
 	_connected bool
 	_update bool
 }
 
-func New(id string, url string) (Pulsatio) {
+func New(id string, url string, ip string, hostname string) Pulsatio {
 	p := Pulsatio{}
 	p.url = url
 	p.id = id
+	p.hostname = hostname
+	p.ip = ip
 	p._interval = 1 * 15000
 	p._message_id = ""
 	p._active = true
